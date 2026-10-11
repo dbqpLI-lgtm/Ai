@@ -15,23 +15,27 @@
         
         html, body { margin: 0; padding: 0; height: 100%; height: 100dvh; overflow: hidden; background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; font-size: 20px; }
         
-        /* Top Navigation */
         .header { display: flex; justify-content: space-between; align-items: center; padding: 18px 25px; }
         .icon-btn { background: var(--surface); color: var(--text); border: none; border-radius: 50%; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
         
-        /* Past Conversations Menu */
-        #historyMenu { display: none; background: var(--surface); position: absolute; top: 80px; left: 20px; padding: 20px; border-radius: 12px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.5); width: 250px; }
-        .history-title { font-size: 16px; color: var(--text-muted); margin-bottom: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        #historyMenu, #debateMenu { display: none; background: var(--surface); position: absolute; padding: 20px; border-radius: 12px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.5); border: 1px solid #444; }
+        #historyMenu { top: 80px; left: 20px; width: 250px; }
+        #debateMenu { top: 130px; right: 20px; width: 240px; }
+        
+        .menu-title { font-size: 14px; color: var(--text-muted); margin-bottom: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
         .history-item { padding: 12px; font-size: 18px; color: var(--text); cursor: pointer; border-radius: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
         .history-item:hover { background-color: #444; }
+        
+        .debate-cb-label { display: flex; align-items: center; gap: 12px; font-size: 16px; margin-bottom: 12px; cursor: pointer; color: var(--text); }
+        .debate-cb-label input { width: 20px; height: 20px; cursor: pointer; accent-color: var(--blue); }
 
-        /* Minimalist Model Selector - 20px above ChatBox */
-        .model-selector-container { text-align: center; margin-bottom: 20px; flex-shrink: 0; }
+        .model-selector-container { display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 20px; flex-shrink: 0; }
         select.model-selector { background: transparent; color: var(--text-muted); border: none; font-size: 16px; outline: none; cursor: pointer; text-align: center; padding: 5px; appearance: none; -webkit-appearance: none; font-weight: 500; }
         select.model-selector:focus { color: var(--text); }
         select.model-selector option { background: var(--surface); color: var(--text); }
+        
+        .bot-toggle { background: transparent; border: 1px solid #444; color: var(--text-muted); border-radius: 20px; padding: 6px 14px; font-size: 14px; cursor: pointer; font-weight: bold; transition: all 0.2s; }
 
-        /* Chat Area */
         #chatBox { flex: 1; width: 100%; max-width: 800px; margin: 0 auto; overflow-y: auto; padding: 5px 25px 25px 25px; box-sizing: border-box; display: flex; flex-direction: column; }
         .message-row { display: flex; margin-bottom: 30px; width: 100%; }
         .user-row { justify-content: flex-end; }
@@ -40,15 +44,18 @@
         .user { background-color: var(--surface); border-radius: 28px; }
         .ai { background-color: transparent; padding-left: 0; }
         
-        /* Bottom Input Pill */
-        .input-container { width: 100%; max-width: 800px; margin: 0 auto; padding: 12px 25px 25px 25px; box-sizing: border-box; background-color: var(--bg); }
+        .input-container { position: relative; width: 100%; max-width: 800px; margin: 0 auto; padding: 12px 25px 25px 25px; box-sizing: border-box; background-color: var(--bg); }
         .input-box { background-color: var(--surface); border-radius: 38px; padding: 10px 15px 10px 20px; display: flex; align-items: flex-end; gap: 15px; min-height: 65px; box-sizing: border-box; }
         
-        .plus-icon { color: var(--text-muted); display: flex; align-items: center; justify-content: center; height: 45px; }
+        .slash-icon { color: var(--text-muted); display: flex; align-items: center; justify-content: center; height: 45px; width: 28px; font-size: 24px; font-weight: bold; cursor: pointer; transition: color 0.2s; }
+        .slash-icon:hover { color: var(--text); }
+        #slashMenu { display: none; background: var(--surface); position: absolute; bottom: 85px; left: 25px; padding: 15px; border-radius: 12px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.5); width: 250px; border: 1px solid #444; }
+        .slash-item { padding: 10px; font-size: 16px; color: var(--text); cursor: pointer; border-radius: 8px; margin-bottom: 5px; display: flex; flex-direction: column; }
+        .slash-item span { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+        .slash-item:hover { background-color: #444; }
         
         textarea { flex: 1; background: transparent; border: none; color: var(--text); font-size: 20px; outline: none; resize: none; max-height: 180px; padding: 0; line-height: 30px; margin: 7px 0; overflow-y: auto; }
         textarea::placeholder { color: var(--text-muted); }
-        
         .action-icons { display: flex; align-items: center; gap: 15px; height: 45px; }
         
         button.send-btn { background: var(--blue); color: var(--text); border: none; border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; flex-shrink: 0; transition: background 0.2s; }
@@ -71,30 +78,54 @@
     </div>
 
     <div id="historyMenu">
-        <div class="history-title">Past Conversations</div>
+        <div class="menu-title">Past Conversations</div>
         <div class="history-item">Local AI Testing...</div>
-        <div class="history-item">Server config...</div>
         <div class="history-item" style="color: var(--text-muted); font-size: 14px; margin-top: 15px;" onclick="location.reload()">+ Start New Chat</div>
+    </div>
+    
+    <div id="debateMenu">
+        <div class="menu-title">Debate Roster</div>
+        <label class="debate-cb-label"><input type="checkbox" value="socialnetwooky/llama3.2-abliterated:3b_q4" class="debate-cb" checked> Llama 3.2 (Uncensored)</label>
+        <label class="debate-cb-label"><input type="checkbox" value="dolphin-phi" class="debate-cb" checked> Dolphin Phi</label>
+        <label class="debate-cb-label"><input type="checkbox" value="llama3.2" class="debate-cb"> Llama 3.2</label>
+        <label class="debate-cb-label"><input type="checkbox" value="phi4-mini" class="debate-cb"> Phi-4 Mini</label>
+        <label class="debate-cb-label"><input type="checkbox" value="gemma2:2b" class="debate-cb"> Gemma 2</label>
+        <label class="debate-cb-label"><input type="checkbox" value="granite4.2:3b" class="debate-cb"> Granite 4.2</label>
+        <label class="debate-cb-label"><input type="checkbox" value="qwen2.5-coder:1.5b" class="debate-cb"> Qwen 2.5</label>
     </div>
     
     <div class="model-selector-container">
         <select id="modelSelect" class="model-selector">
-            <option value="llama3.2">Llama 3.2 (Quality)</option>
-            <option value="phi4-mini">Phi-4 Mini (Smart/Efficient)</option>
-            <option value="gemma2:2b">Gemma 2 (Compact/Speed)</option>
-            <option value="granite4.2:3b">Granite 4.2 (Max Speed)</option>
-            <option value="qwen2.5-coder:1.5b">Qwen 2.5 (Coding)</option>
-            <option value="image">Images (Pollinations)</option>
+            <option value="socialnetwooky/llama3.2-abliterated:3b_q4">Llama 3.2 (Uncensored)</option>
+            <option value="dolphin-phi">Dolphin Phi (Uncensored)</option>
+            <option value="llama3.2">Llama 3.2 (Standard)</option>
+            <option value="phi4-mini">Phi-4 Mini (Standard)</option>
+            <option value="gemma2:2b">Gemma 2</option>
+            <option value="granite4.2:3b">Granite 4.2</option>
+            <option value="qwen2.5-coder:1.5b">Qwen 2.5</option>
+            <option value="image">Images</option>
         </select>
+        <button id="botChatBtn" class="bot-toggle" onclick="toggleBotChat()">🤖 Bots: OFF</button>
+        <button class="bot-toggle" style="padding: 6px 12px;" onclick="toggleDebateMenu()">⚙️</button>
     </div>
 
     <div id="chatBox"></div>
     
     <div class="input-container">
-        <div class="input-box">
-            <div class="plus-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        <div id="slashMenu">
+            <div class="menu-title">Commands</div>
+            <div class="slash-item" onclick="insertCommand('/study ')">
+                /study [topic]
+                <span>Deep researches and permanently memorizes a topic</span>
             </div>
+            <div class="slash-item" onclick="insertCommand('/search ')">
+                /search [topic]
+                <span>Fetches live data from Wikipedia for immediate use</span>
+            </div>
+        </div>
+        
+        <div class="input-box">
+            <div class="slash-icon" onclick="toggleSlashMenu()">/</div>
             <textarea id="userInput" rows="1" placeholder="Ask AI..." oninput="handleInput(this)" onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
             <div class="action-icons">
                 <button id="sendBtn" class="send-btn" onclick="sendMessage()">
@@ -107,47 +138,63 @@
     <script>
         let messageHistory = [];
         let isMuted = false;
+        let isBotChatMode = false;
         const input = document.getElementById('userInput');
         const sendBtn = document.getElementById('sendBtn');
         const btnIcon = document.getElementById('btnIcon');
         const historyMenu = document.getElementById('historyMenu');
+        const debateMenu = document.getElementById('debateMenu');
+        const slashMenu = document.getElementById('slashMenu');
         const micIcon = document.getElementById('micIcon');
         const modelSelect = document.getElementById('modelSelect');
+        const botChatBtn = document.getElementById('botChatBtn');
 
         const waveformSVG = `<line x1="12" y1="7" x2="12" y2="17"></line><line x1="8" y1="10" x2="8" y2="14"></line><line x1="16" y1="10" x2="16" y2="14"></line>`;
         const arrowSVG = `<path d="M12 19V5M5 12l7-7 7 7" stroke-linejoin="round"/>`;
         const micOnSVG = `<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line>`;
         const micOffSVG = `<line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line>`;
 
-        function toggleHistory() {
-            historyMenu.style.display = historyMenu.style.display === 'block' ? 'none' : 'block';
+        function toggleHistory() { historyMenu.style.display = historyMenu.style.display === 'block' ? 'none' : 'block'; debateMenu.style.display = 'none'; }
+        function toggleDebateMenu() { debateMenu.style.display = debateMenu.style.display === 'block' ? 'none' : 'block'; historyMenu.style.display = 'none'; }
+        function toggleSlashMenu() { slashMenu.style.display = slashMenu.style.display === 'block' ? 'none' : 'block'; }
+        function toggleMute() { isMuted = !isMuted; micIcon.innerHTML = isMuted ? micOffSVG : micOnSVG; if (isMuted) window.speechSynthesis.cancel(); }
+
+        function insertCommand(cmd) {
+            input.value = cmd;
+            slashMenu.style.display = 'none';
+            input.focus();
+            handleInput(input);
         }
 
-        function toggleMute() {
-            isMuted = !isMuted;
-            micIcon.innerHTML = isMuted ? micOffSVG : micOnSVG;
-            if (isMuted) window.speechSynthesis.cancel();
+        function toggleBotChat() {
+            isBotChatMode = !isBotChatMode;
+            if (isBotChatMode) {
+                botChatBtn.style.color = 'var(--text)';
+                botChatBtn.style.border = '1px solid var(--text)';
+                botChatBtn.innerText = '🤖 Bots: ON';
+                if (messageHistory.length > 0) {
+                    input.value = "Continue the conversation.";
+                    sendMessage();
+                }
+            } else {
+                botChatBtn.style.color = 'var(--text-muted)';
+                botChatBtn.style.border = '1px solid #444';
+                botChatBtn.innerText = '🤖 Bots: OFF';
+            }
         }
 
         function handleInput(el) {
-            el.style.height = 'auto';
-            el.style.height = Math.min(el.scrollHeight, 180) + 'px';
-            
-            if(el.value.trim().length > 0) {
-                btnIcon.innerHTML = arrowSVG;
-                sendBtn.style.background = '#ffffff';
-                sendBtn.style.color = 'var(--bg)';
-            } else {
-                btnIcon.innerHTML = waveformSVG;
-                sendBtn.style.background = 'var(--blue)';
-                sendBtn.style.color = 'var(--text)';
-            }
+            el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+            if(el.value.trim().length > 0) { btnIcon.innerHTML = arrowSVG; sendBtn.style.background = '#ffffff'; sendBtn.style.color = 'var(--bg)'; } 
+            else { btnIcon.innerHTML = waveformSVG; sendBtn.style.background = 'var(--blue)'; sendBtn.style.color = 'var(--text)'; }
         }
 
         async function sendMessage() {
             const text = input.value.trim();
             if (!text) return;
-
+            
+            slashMenu.style.display = 'none';
+            debateMenu.style.display = 'none';
             const selectedModel = modelSelect.value;
             const chatBox = document.getElementById('chatBox');
             
@@ -163,8 +210,7 @@
 
             try {
                 const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ messages: messageHistory, model: selectedModel })
                 });
                 
@@ -173,14 +219,30 @@
 
                 if (data.reply) {
                     chatBox.innerHTML += `<div class="message-row ai-row"><div class="message ai">${data.reply}</div></div>`;
-                    if (data.image) {
-                        chatBox.innerHTML += `<div class="message-row ai-row"><img src="${data.image}" style="max-width: 100%; border-radius: 8px;"></div>`;
-                    } else {
+                    if (!data.image) {
                         messageHistory.push({ role: "assistant", content: data.reply });
-                        if (!isMuted) {
+                        if (!isMuted && !text.startsWith('/study')) {
                             const utterance = new SpeechSynthesisUtterance(data.reply);
                             window.speechSynthesis.speak(utterance);
                         }
+
+                        if (isBotChatMode) {
+                            setTimeout(() => {
+                                if (!isBotChatMode) return;
+                                
+                                // Get active bots from the settings menu
+                                const checkboxes = document.querySelectorAll('.debate-cb:checked');
+                                let opts = Array.from(checkboxes).map(cb => cb.value);
+                                if (opts.length === 0) opts = [selectedModel]; // Fail-safe
+                                
+                                let next = opts[Math.floor(Math.random() * opts.length)];
+                                modelSelect.value = next;
+                                input.value = `[${selectedModel} said]: ${data.reply}`;
+                                sendMessage();
+                            }, 3000);
+                        }
+                    } else if (data.image) {
+                        chatBox.innerHTML += `<div class="message-row ai-row"><img src="${data.image}" style="max-width: 100%; border-radius: 8px;"></div>`;
                     }
                 }
             } catch (error) {

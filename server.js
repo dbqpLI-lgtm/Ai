@@ -27,18 +27,69 @@ function cosineSimilarity(vecA, vecB) {
 }
 
 async function getEmbedding(text) {
-    const response = await fetch('http://127.0.0.1:11434/api/embed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'nomic-embed-text', input: text })
-    });
-    const data = await response.json();
-    return data.embeddings[0];
+    try {
+        const response = await fetch('http://127.0.0.1:11434/api/embed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'nomic-embed-text', input: text })
+        });
+        const data = await response.json();
+        return data.embeddings[0];
+    } catch (e) {
+        return new Array(768).fill(0);
+    }
 }
 
 app.post('/api/chat', async (req, res) => {
     const messages = req.body.messages;
-    const lastMessage = messages[messages.length - 1].content;
+    const requestedModel = req.body.model || 'socialnetwooky/llama3.2-abliterated:3b_q4';
+    let lastMessage = messages[messages.length - 1].content;
+    let liveWebContext = "";
+
+    if (requestedModel === 'image') {
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(lastMessage)}?width=1024&height=1024&nologo=true`;
+        return res.json({ reply: 'Here is your image:', image: imageUrl });
+    }
+    
+    // NEW: Deep Study Interceptor (Permanent Memory)
+    if (lastMessage.toLowerCase().startsWith('/study ')) {
+        const query = lastMessage.substring(7).trim();
+        try {
+            const searchRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`);
+            const searchData = await searchRes.json();
+            
+            if (searchData.extract) {
+                const studyContent = `[DEEP STUDY ARCHIVE - Topic: ${query}]: ${searchData.extract}`;
+                const studyEmbedding = await getEmbedding(studyContent);
+                
+                memoryStore.push({ text: studyContent, embedding: studyEmbedding });
+                fs.writeFileSync(MEMORY_FILE, JSON.stringify(memoryStore, null, 2));
+                
+                return res.json({ reply: `📚 **Study Complete.** I have researched "${query}" and permanently committed the data to my vector memory. I will now reference this in our future conversations.` });
+            } else {
+                return res.json({ reply: `⚠️ I attempted to study "${query}", but could not find comprehensive data.` });
+            }
+        } catch (e) {
+            return res.json({ reply: `⚠️ Network error while attempting to study.` });
+        }
+    }
+
+    // Standard Search Interceptor (Temporary Memory)
+    if (lastMessage.toLowerCase().startsWith('/search ')) {
+        const query = lastMessage.substring(8).trim();
+        try {
+            const searchRes = await fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(query)}`);
+            const searchData = await searchRes.json();
+            if (searchData.extract) {
+                liveWebContext = `\n\nLIVE WEB SEARCH RESULTS FOR "${query}": ${searchData.extract}`;
+            } else {
+                liveWebContext = `\n\nLIVE WEB SEARCH RESULTS: No data found for "${query}".`;
+            }
+            lastMessage = `I just searched the web for "${query}". Based on the live results provided in your system prompt, explain this to me.`;
+        } catch (e) {
+            liveWebContext = `\n\nLIVE WEB SEARCH FAILED.`;
+        }
+    }
 
     try {
         const currentEmbedding = await getEmbedding(lastMessage);
@@ -49,29 +100,32 @@ app.post('/api/chat', async (req, res) => {
                 text: mem.text,
                 score: cosineSimilarity(currentEmbedding, mem.embedding)
             })).sort((a, b) => b.score - a.score);
-            relevantContext = scoredMemories.slice(0, 2).map(m => m.text).join(" | ");
+            
+            relevantContext = scoredMemories.slice(0, 3).map(m => m.text).join(" | ");
         }
 
         const finalMessages = [
-            { role: "system", content: `You are a helpful AI. Use this context from past conversations to help answer: ${relevantContext}` },
-            ...messages
+            { role: "system", content: `You are a helpful AI. Context: ${relevantContext}${liveWebContext}` },
+            ...messages.slice(0, -1),
+            { role: "user", content: lastMessage }
         ];
 
         const response = await fetch('http://127.0.0.1:11434/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: 'llama3', messages: finalMessages, stream: false })
+            body: JSON.stringify({ model: requestedModel, messages: finalMessages, stream: false })
         });
         
         const data = await response.json();
         const aiReply = data.message.content;
 
-        memoryStore.push({ text: `User said: ${lastMessage}. AI replied: ${aiReply}`, embedding: currentEmbedding });
+        const userMemoryText = req.body.messages[req.body.messages.length - 1].content;
+        memoryStore.push({ text: `User said: ${userMemoryText}. AI replied: ${aiReply}`, embedding: currentEmbedding });
         fs.writeFileSync(MEMORY_FILE, JSON.stringify(memoryStore, null, 2));
 
         res.json({ reply: aiReply });
     } catch (error) {
-        res.status(500).json({ error: "Failed to connect to local AI" });
+        res.status(500).json({ error: "Failed to connect to local AI." });
     }
 });
 
