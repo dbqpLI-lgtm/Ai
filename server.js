@@ -1,18 +1,19 @@
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
+const path = require('path');
 const app = express();
-const PORT = 3000;
+const PORT = 3030;
 const MEMORY_FILE = 'memory.json';
 
+app.use(express.static(__dirname));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
 app.use(express.json());
 app.use(cors());
 
-// Load existing memories from the file, or start with an empty array
 let memoryStore = [];
 if (fs.existsSync(MEMORY_FILE)) {
-    const rawData = fs.readFileSync(MEMORY_FILE);
-    memoryStore = JSON.parse(rawData);
+    memoryStore = JSON.parse(fs.readFileSync(MEMORY_FILE));
 }
 
 function cosineSimilarity(vecA, vecB) {
@@ -39,45 +40,33 @@ app.post('/api/chat', async (req, res) => {
     const messages = req.body.messages;
     const lastMessage = messages[messages.length - 1].content;
 
-    if (lastMessage.startsWith('/imagine ')) {
-        const prompt = lastMessage.replace('/imagine ', '').trim();
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=512&height=512&nologo=true`;
-        return res.json({ reply: 'Here is your image:', image: imageUrl });
-    }
-
     try {
         const currentEmbedding = await getEmbedding(lastMessage);
-        
         let relevantContext = "";
+        
         if (memoryStore.length > 0) {
             const scoredMemories = memoryStore.map(mem => ({
                 text: mem.text,
                 score: cosineSimilarity(currentEmbedding, mem.embedding)
             })).sort((a, b) => b.score - a.score);
-            
             relevantContext = scoredMemories.slice(0, 2).map(m => m.text).join(" | ");
         }
 
-        const systemPrompt = {
-            role: "system",
-            content: `You are a helpful AI. Use this context from past conversations to help you answer if relevant: ${relevantContext}`
-        };
-        const finalMessages = [systemPrompt, ...messages];
+        const finalMessages = [
+            { role: "system", content: `You are a helpful AI. Use this context from past conversations to help answer: ${relevantContext}` },
+            ...messages
+        ];
 
         const response = await fetch('http://127.0.0.1:11434/api/chat', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ model: 'llama3', messages: finalMessages, stream: false })
         });
+        
         const data = await response.json();
         const aiReply = data.message.content;
 
-        memoryStore.push({ 
-            text: `User said: ${lastMessage}. AI replied: ${aiReply}`, 
-            embedding: currentEmbedding 
-        });
-
-        // Save the updated memory array to the physical file
+        memoryStore.push({ text: `User said: ${lastMessage}. AI replied: ${aiReply}`, embedding: currentEmbedding });
         fs.writeFileSync(MEMORY_FILE, JSON.stringify(memoryStore, null, 2));
 
         res.json({ reply: aiReply });

@@ -2,81 +2,190 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Local AI Chat</title>
     <style>
-        body { font-family: system-ui, sans-serif; max-width: 600px; margin: 20px auto; padding: 10px; }
-        #chatBox { height: 60vh; border: 1px solid #ccc; border-radius: 8px; overflow-y: auto; padding: 15px; margin-bottom: 10px; background: #f9f9f9; }
-        .message { margin-bottom: 10px; padding: 10px 14px; border-radius: 15px; max-width: 80%; line-height: 1.4; }
-        .user { background: #007bff; color: white; margin-left: auto; border-bottom-right-radius: 2px; }
-        .ai { background: #e9ecef; color: black; margin-right: auto; border-bottom-left-radius: 2px; }
-        .controls { display: flex; gap: 8px; margin-bottom: 10px; }
-        select, input, button { padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
-        select { flex: 1; }
-        .input-area { display: flex; gap: 8px; }
-        input { flex: 1; }
-        button { background: #007bff; color: white; border: none; font-weight: bold; }
+        :root {
+            --bg: #000000;
+            --surface: #2f2f2f;
+            --text: #ffffff;
+            --text-muted: #8e8e8e;
+            --blue: #5b87ff;
+        }
+        
+        html, body { margin: 0; padding: 0; height: 100%; height: 100dvh; overflow: hidden; background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; font-size: 20px; }
+        
+        /* Top Navigation */
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 18px 25px; }
+        .icon-btn { background: var(--surface); color: var(--text); border: none; border-radius: 50%; width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        
+        /* Past Conversations Menu */
+        #historyMenu { display: none; background: var(--surface); position: absolute; top: 80px; left: 20px; padding: 20px; border-radius: 12px; z-index: 100; box-shadow: 0 4px 12px rgba(0,0,0,0.5); width: 250px; }
+        .history-title { font-size: 16px; color: var(--text-muted); margin-bottom: 15px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+        .history-item { padding: 12px; font-size: 18px; color: var(--text); cursor: pointer; border-radius: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 5px; }
+        .history-item:hover { background-color: #444; }
+
+        /* Minimalist Model Selector - 20px above ChatBox */
+        .model-selector-container { text-align: center; margin-bottom: 20px; flex-shrink: 0; }
+        select.model-selector { background: transparent; color: var(--text-muted); border: none; font-size: 16px; outline: none; cursor: pointer; text-align: center; padding: 5px; appearance: none; -webkit-appearance: none; font-weight: 500; }
+        select.model-selector:focus { color: var(--text); }
+        select.model-selector option { background: var(--surface); color: var(--text); }
+
+        /* Chat Area */
+        #chatBox { flex: 1; width: 100%; max-width: 800px; margin: 0 auto; overflow-y: auto; padding: 5px 25px 25px 25px; box-sizing: border-box; display: flex; flex-direction: column; }
+        .message-row { display: flex; margin-bottom: 30px; width: 100%; }
+        .user-row { justify-content: flex-end; }
+        .ai-row { justify-content: flex-start; }
+        .message { max-width: 85%; padding: 15px 22px; font-size: 20px; line-height: 1.5; word-wrap: break-word; }
+        .user { background-color: var(--surface); border-radius: 28px; }
+        .ai { background-color: transparent; padding-left: 0; }
+        
+        /* Bottom Input Pill */
+        .input-container { width: 100%; max-width: 800px; margin: 0 auto; padding: 12px 25px 25px 25px; box-sizing: border-box; background-color: var(--bg); }
+        .input-box { background-color: var(--surface); border-radius: 38px; padding: 10px 15px 10px 20px; display: flex; align-items: flex-end; gap: 15px; min-height: 65px; box-sizing: border-box; }
+        
+        .plus-icon { color: var(--text-muted); display: flex; align-items: center; justify-content: center; height: 45px; }
+        
+        textarea { flex: 1; background: transparent; border: none; color: var(--text); font-size: 20px; outline: none; resize: none; max-height: 180px; padding: 0; line-height: 30px; margin: 7px 0; overflow-y: auto; }
+        textarea::placeholder { color: var(--text-muted); }
+        
+        .action-icons { display: flex; align-items: center; gap: 15px; height: 45px; }
+        
+        button.send-btn { background: var(--blue); color: var(--text); border: none; border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; flex-shrink: 0; transition: background 0.2s; }
+        
+        .thinking { color: var(--text-muted); font-style: italic; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        
+        svg { width: 28px; height: 28px; }
+        .btn-svg { width: 25px; height: 25px; }
     </style>
 </head>
 <body>
-    <h2>Llama 3 Local</h2>
-    <div class="controls">
-        <select id="voiceSelect"><option>Loading voices...</option></select>
+    <div class="header">
+        <button class="icon-btn" onclick="toggleHistory()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="18" x2="14" y2="18"></line></svg>
+        </button>
+        <button class="icon-btn" onclick="toggleMute()" id="muteBtn">
+            <svg id="micIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+        </button>
     </div>
+
+    <div id="historyMenu">
+        <div class="history-title">Past Conversations</div>
+        <div class="history-item">Local AI Testing...</div>
+        <div class="history-item">Server config...</div>
+        <div class="history-item" style="color: var(--text-muted); font-size: 14px; margin-top: 15px;" onclick="location.reload()">+ Start New Chat</div>
+    </div>
+    
+    <div class="model-selector-container">
+        <select id="modelSelect" class="model-selector">
+            <option value="llama3.2">Llama 3.2 (Quality)</option>
+            <option value="phi4-mini">Phi-4 Mini (Smart/Efficient)</option>
+            <option value="gemma2:2b">Gemma 2 (Compact/Speed)</option>
+            <option value="granite4.2:3b">Granite 4.2 (Max Speed)</option>
+            <option value="qwen2.5-coder:1.5b">Qwen 2.5 (Coding)</option>
+            <option value="image">Images (Pollinations)</option>
+        </select>
+    </div>
+
     <div id="chatBox"></div>
-    <div class="input-area">
-        <input type="text" id="userInput" placeholder="Message AI..." onkeypress="if(event.key === 'Enter') sendMessage()">
-        <button onclick="sendMessage()">Send</button>
+    
+    <div class="input-container">
+        <div class="input-box">
+            <div class="plus-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </div>
+            <textarea id="userInput" rows="1" placeholder="Ask AI..." oninput="handleInput(this)" onkeydown="if(event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); sendMessage(); }"></textarea>
+            <div class="action-icons">
+                <button id="sendBtn" class="send-btn" onclick="sendMessage()">
+                    <svg id="btnIcon" class="btn-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="7" x2="12" y2="17"></line><line x1="8" y1="10" x2="8" y2="14"></line><line x1="16" y1="10" x2="16" y2="14"></line></svg>
+                </button>
+            </div>
+        </div>
     </div>
 
     <script>
         let messageHistory = [];
-        let voices = [];
-        const voiceSelect = document.getElementById('voiceSelect');
+        let isMuted = false;
+        const input = document.getElementById('userInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const btnIcon = document.getElementById('btnIcon');
+        const historyMenu = document.getElementById('historyMenu');
+        const micIcon = document.getElementById('micIcon');
+        const modelSelect = document.getElementById('modelSelect');
 
-        function loadVoices() {
-            voices = window.speechSynthesis.getVoices();
-            voiceSelect.innerHTML = voices.map((v, i) => `<option value="${i}">${v.name} (${v.lang})</option>`).join('');
+        const waveformSVG = `<line x1="12" y1="7" x2="12" y2="17"></line><line x1="8" y1="10" x2="8" y2="14"></line><line x1="16" y1="10" x2="16" y2="14"></line>`;
+        const arrowSVG = `<path d="M12 19V5M5 12l7-7 7 7" stroke-linejoin="round"/>`;
+        const micOnSVG = `<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line>`;
+        const micOffSVG = `<line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line>`;
+
+        function toggleHistory() {
+            historyMenu.style.display = historyMenu.style.display === 'block' ? 'none' : 'block';
         }
-        
-        window.speechSynthesis.onvoiceschanged = loadVoices;
-        setTimeout(loadVoices, 500);
-        
+
+        function toggleMute() {
+            isMuted = !isMuted;
+            micIcon.innerHTML = isMuted ? micOffSVG : micOnSVG;
+            if (isMuted) window.speechSynthesis.cancel();
+        }
+
+        function handleInput(el) {
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+            
+            if(el.value.trim().length > 0) {
+                btnIcon.innerHTML = arrowSVG;
+                sendBtn.style.background = '#ffffff';
+                sendBtn.style.color = 'var(--bg)';
+            } else {
+                btnIcon.innerHTML = waveformSVG;
+                sendBtn.style.background = 'var(--blue)';
+                sendBtn.style.color = 'var(--text)';
+            }
+        }
+
         async function sendMessage() {
-            const input = document.getElementById('userInput');
-            const chatBox = document.getElementById('chatBox');
             const text = input.value.trim();
             if (!text) return;
 
-            chatBox.innerHTML += `<div class="message user">${text}</div>`;
+            const selectedModel = modelSelect.value;
+            const chatBox = document.getElementById('chatBox');
+            
+            chatBox.innerHTML += `<div class="message-row user-row"><div class="message user">${text}</div></div>`;
             messageHistory.push({ role: "user", content: text });
+            
             input.value = '';
+            handleInput(input);
+
+            const thinkingId = 'thinking-' + Date.now();
+            chatBox.innerHTML += `<div id="${thinkingId}" class="message-row ai-row"><div class="message ai thinking">🤔 Thinking...</div></div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
-                const response = await fetch('http://127.0.0.1:3000/api/chat', {
+                const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ messages: messageHistory })
+                    body: JSON.stringify({ messages: messageHistory, model: selectedModel })
                 });
                 
                 const data = await response.json();
-                
+                document.getElementById(thinkingId).remove();
+
                 if (data.reply) {
-                    chatBox.innerHTML += `<div class="message ai">${data.reply}</div>`;
-                    messageHistory.push({ role: "assistant", content: data.reply });
-                    
-                    const utterance = new SpeechSynthesisUtterance(data.reply);
-                    const selectedVoiceIndex = voiceSelect.value;
-                    if (voices[selectedVoiceIndex]) {
-                        utterance.voice = voices[selectedVoiceIndex];
+                    chatBox.innerHTML += `<div class="message-row ai-row"><div class="message ai">${data.reply}</div></div>`;
+                    if (data.image) {
+                        chatBox.innerHTML += `<div class="message-row ai-row"><img src="${data.image}" style="max-width: 100%; border-radius: 8px;"></div>`;
+                    } else {
+                        messageHistory.push({ role: "assistant", content: data.reply });
+                        if (!isMuted) {
+                            const utterance = new SpeechSynthesisUtterance(data.reply);
+                            window.speechSynthesis.speak(utterance);
+                        }
                     }
-                    window.speechSynthesis.speak(utterance);
-                } else {
-                    chatBox.innerHTML += `<div class="message ai" style="color: red;">Error: Could not get reply.</div>`;
                 }
             } catch (error) {
-                chatBox.innerHTML += `<div class="message ai" style="color: red;">Connection Error. Is the Node server running?</div>`;
+                document.getElementById(thinkingId).remove();
+                chatBox.innerHTML += `<div class="message-row ai-row"><div class="message ai" style="color: #ff6b6b;">Connection Error.</div></div>`;
             }
             chatBox.scrollTop = chatBox.scrollHeight;
         }
